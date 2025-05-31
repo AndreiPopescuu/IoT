@@ -2,40 +2,40 @@ from flask import Flask, render_template
 import plotly.express as px
 import pandas as pd
 import boto3
+import os
 
 app = Flask(__name__)
 
-# Configure your DynamoDB table and region
-dynamodb = boto3.resource('dynamodb', region_name='eu-north-1')  # e.g., 'us-east-1'
-table = dynamodb.Table('FaceRecognitionLogs')  # Replace with your table name
+# Debug: verifică dacă AWS_ACCESS_KEY_ID este setat
+print("DEBUG AWS_ACCESS_KEY_ID:", os.environ.get("AWS_ACCESS_KEY_ID"))
+
+AWS_REGION = os.getenv('AWS_DEFAULT_REGION', 'eu-north-1')
+DYNAMODB_TABLE = os.getenv('DYNAMODB_TABLE', 'FaceRecognitionLogs')
+
+dynamodb = boto3.resource('dynamodb', region_name=AWS_REGION)
+table = dynamodb.Table(DYNAMODB_TABLE)
 
 @app.route('/')
 def index():
-    # Fetch all data
-    response = table.scan()
-    items = response.get('Items', [])
+    try:
+        response = table.scan()
+        items = response.get('Items', [])
 
-    # Check if data exists
-    if not items:
-        return "No data available from DynamoDB."
+        if not items:
+            return "No data available from DynamoDB."
 
-    # Convert to DataFrame
-    df = pd.DataFrame(items)
+        df = pd.DataFrame(items)
+        df.rename(columns={'person_name': 'nume', 'timestamp': 'ora'}, inplace=True)
+        df['ora'] = pd.to_datetime(df['ora'])
+        count_df = df.groupby('nume').size().reset_index(name='Apariții')
 
-    # Rename to match the expected columns
-    df.rename(columns={'person_name': 'nume', 'timestamp': 'ora'}, inplace=True)
+        fig = px.bar(count_df, x='nume', y='Apariții', title='Apariții pe zi')
+        plot_html = fig.to_html(full_html=False)
 
-    # Optional: convert timestamp to datetime (if needed for filtering/plotting by time)
-    df['ora'] = pd.to_datetime(df['ora'])
+        return render_template('index.html', plot=plot_html)
 
-    # Count number of appearances by person
-    count_df = df.groupby('nume').size().reset_index(name='Apariții')
-
-    # Generate bar chart
-    fig = px.bar(count_df, x='nume', y='Apariții', title='Apariții pe zi')
-    plot_html = fig.to_html(full_html=False)
-
-    return render_template('index.html', plot=plot_html)
+    except Exception as e:
+        return f"An error occurred: {str(e)}"
 
 if __name__ == '__main__':
     app.run(debug=True)
