@@ -7,7 +7,9 @@ import os
 app = Flask(__name__)
 
 # Debug: verifică dacă AWS_ACCESS_KEY_ID este setat
-print("DEBUG AWS_ACCESS_KEY_ID:", os.environ.get("AWS_ACCESS_KEY_ID"))
+print("AWS_ACCESS_KEY_ID:", os.environ.get("AWS_ACCESS_KEY_ID"))
+print("AWS_SECRET_ACCESS_KEY:", os.environ.get("AWS_SECRET_ACCESS_KEY"))
+print("AWS_SESSION_TOKEN:", os.environ.get("AWS_SESSION_TOKEN"))  # dacă ai sesiune temporară
 
 AWS_REGION = os.getenv('AWS_DEFAULT_REGION', 'eu-north-1')
 DYNAMODB_TABLE = os.getenv('DYNAMODB_TABLE', 'FaceRecognitionLogs')
